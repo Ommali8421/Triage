@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
+import Cropper from 'react-easy-crop'
 import NeumorphicCard from '../components/ui/NeumorphicCard'
 import NeumorphicProgressBar from '../components/ui/NeumorphicProgressBar'
 import NeumorphicToggle from '../components/ui/NeumorphicToggle'
 import NeumorphicSlider from '../components/ui/NeumorphicSlider'
-
-const STEPS = [
-    'Data Acquisition',
-    'AI Analysis',
-    'Result Review',
-]
+import { useLanguage } from '../context/LanguageContext'
 
 const TriagePage = () => {
+    const { t } = useLanguage()
+    const STEPS = [
+        t('triage.step.data'),
+        t('triage.step.ai'),
+        t('triage.step.review'),
+    ]
     const [step, setStep] = useState(1)
     const [recording, setRecording] = useState(false)
     const canvasRef = useRef(null)
@@ -27,12 +29,19 @@ const TriagePage = () => {
     })
 
     const updateTriage = (key, val) => setTriageData(prev => ({ ...prev, [key]: val }))
-    const [riskLevel, setRiskLevel] = useState(null) // 'green' | 'red'
+    const [riskLevel, setRiskLevel] = useState(null) // 'green' | 'yellow' | 'red'
     const [confidence, setConfidence] = useState(null)
+    const [analyzeResult, setAnalyzeResult] = useState(null) // full /analyze response
     const [audioUploaded, setAudioUploaded] = useState(false)
     const [visionUploaded, setVisionUploaded] = useState(false)
     const [audioPreview, setAudioPreview] = useState(null)
     const [visionPreview, setVisionPreview] = useState(null)
+    const [visionFile, setVisionFile] = useState(null)
+    const [imageToCrop, setImageToCrop] = useState(null)
+    const [crop, setCrop] = useState({ x: 0, y: 0 })
+    const [zoom, setZoom] = useState(1)
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+    
     const audioInputRef = useRef(null)
     const visionInputRef = useRef(null)
     const cameraInputRef = useRef(null)
@@ -149,47 +158,46 @@ const TriagePage = () => {
 
     const runAnalysis = () => {
         setStep(2)
-        
-        const formData = new FormData();
-        if (audioFile) {
-            // Append with a default filename in case it's a blob
-            formData.append('audio', audioFile, audioFile.name || 'recording.webm');
+
+        const formData = new FormData()
+        if (!audioFile) { alert('No audio file found'); setStep(1); return; }
+        formData.append('audio', audioFile, audioFile.name || 'recording.webm')
+
+        if (visionFile) {
+            // Use combined /analyze endpoint
+            formData.append('image', visionFile, visionFile.name || 'eye.jpg')
+            formData.append('sex', 'M') // default; can be wired to patient info later
+
+            fetch(`http://${window.location.hostname}:5000/analyze`, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.detail) { alert('Analysis Error: ' + data.detail); setStep(1); return; }
+
+                // Manual override for critical clinical flags
+                let overall = data.overall_risk
+                if (triageData.m1_consciousness || triageData.m1_intake) overall = 'red'
+
+                setAnalyzeResult(data)
+                setRiskLevel(overall)
+                setConfidence(Math.max(data.cough.confidence, data.eye.confidence).toFixed(1))
+                setStep(3)
+            })
+            .catch(err => { console.error(err); alert('Failed to connect to AI server. Make sure python backend is running on port 5000.'); setStep(1); })
         } else {
-            alert('No audio file found');
-            setStep(1);
-            return;
+            fetch(`http://${window.location.hostname}:5000/predict`, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) { alert('Analysis Error: ' + data.error); setStep(1); return; }
+                let risk = data.risk
+                let conf = parseFloat(data.confidence).toFixed(1)
+                if (triageData.m1_consciousness || triageData.m1_intake) { risk = 'red'; conf = '99.9' }
+                setAnalyzeResult(null)
+                setRiskLevel(risk)
+                setConfidence(conf)
+                setStep(3)
+            })
+            .catch(err => { console.error(err); alert('Failed to connect to AI server.'); setStep(1); })
         }
-
-        fetch('http://127.0.0.1:5000/predict', {
-            method: 'POST',
-            body: formData,
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                alert('Analysis Error: ' + data.error);
-                setStep(1);
-                return;
-            }
-            
-            let risk = data.risk;
-            let conf = parseFloat(data.confidence).toFixed(1);
-
-            // RED ALERT override logic
-            if (triageData.m1_consciousness || triageData.m1_intake) {
-                risk = 'red';
-                conf = '99.9';
-            }
-
-            setRiskLevel(risk);
-            setConfidence(conf);
-            setStep(3);
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Failed to connect to AI server. Make sure the local python backend is running on port 5000.');
-            setStep(1);
-        });
     }
 
     const reset = () => {
@@ -197,17 +205,12 @@ const TriagePage = () => {
         if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
             audioCtxRef.current.close().catch(console.error)
         }
-        
-        setStep(1)
-        setRecording(false)
-        setAudioProgress(0)
-        setAudioFile(null)
-        setRiskLevel(null)
-        setConfidence(null)
-        setAudioUploaded(false)
-        setVisionUploaded(false)
-        setAudioPreview(null)
-        setVisionPreview(null)
+        setStep(1); setRecording(false); setAudioProgress(0)
+        setAudioFile(null); setRiskLevel(null); setConfidence(null)
+        setAudioUploaded(false); setVisionUploaded(false)
+        setAudioPreview(null); setVisionPreview(null)
+        setVisionFile(null); setAnalyzeResult(null)
+        setImageToCrop(null); setCrop({ x: 0, y: 0 }); setZoom(1); setCroppedAreaPixels(null)
         setTriageData({
             m1_consciousness: false, m1_intake: false,
             m2_cough: 0, m2_breathing: 0, m2_fever: 0, m2_blood: false, m2_silicosis: false,
@@ -219,17 +222,59 @@ const TriagePage = () => {
     const handleFileUpload = (type, e) => {
         const file = e.target.files[0]
         if (!file) return
-
         const fileUrl = URL.createObjectURL(file)
-
         if (type === 'audio') {
             setAudioFile(file)
             setAudioPreview(fileUrl)
             setAudioUploaded(true)
             setAudioProgress(100)
         } else if (type === 'vision') {
-            setVisionPreview(fileUrl)
+            setImageToCrop(fileUrl)
+        }
+        e.target.value = null // reset input
+    }
+
+    const getCroppedImg = async (imageSrc, pixelCrop) => {
+        const image = new Image()
+        image.src = imageSrc
+        await new Promise((resolve) => { image.onload = resolve })
+
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        canvas.width = pixelCrop.width
+        canvas.height = pixelCrop.height
+
+        ctx.drawImage(
+            image,
+            pixelCrop.x,
+            pixelCrop.y,
+            pixelCrop.width,
+            pixelCrop.height,
+            0,
+            0,
+            pixelCrop.width,
+            pixelCrop.height
+        )
+
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                blob.name = 'cropped_eye.jpg'
+                resolve(blob)
+            }, 'image/jpeg')
+        })
+    }
+
+    const handleCropComplete = async () => {
+        try {
+            if (!croppedAreaPixels) return
+            const croppedBlob = await getCroppedImg(imageToCrop, croppedAreaPixels)
+            const croppedUrl = URL.createObjectURL(croppedBlob)
+            setVisionFile(croppedBlob)
+            setVisionPreview(croppedUrl)
             setVisionUploaded(true)
+            setImageToCrop(null)
+        } catch (e) {
+            console.error(e)
         }
     }
 
@@ -294,7 +339,7 @@ const TriagePage = () => {
                     {/* Audio Capture */}
                     <NeumorphicCard>
                         <p style={{ margin: '0 0 16px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            🎙️ Cough Audio Capture
+                            {t('triage.audio.title')}
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
                             {/* Mic Button */}
@@ -400,9 +445,29 @@ const TriagePage = () => {
                     {/* Vision Capture */}
                     <NeumorphicCard>
                         <p style={{ margin: '0 0 16px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            👁️ Vision Capture
+                            {t('triage.vision.title')}
                         </p>
-                        {visionPreview ? (
+                        {imageToCrop ? (
+                            <div style={{ position: 'relative', width: '100%', height: '250px', borderRadius: '16px', overflow: 'hidden', boxShadow: 'inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light)' }}>
+                                <Cropper
+                                    image={imageToCrop}
+                                    crop={crop}
+                                    zoom={zoom}
+                                    aspect={1}
+                                    onCropChange={setCrop}
+                                    onCropComplete={(croppedArea, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
+                                    onZoomChange={setZoom}
+                                />
+                                <div style={{ position: 'absolute', bottom: '12px', left: '12px', right: '12px', display: 'flex', gap: '8px', zIndex: 10 }}>
+                                    <button onClick={() => { setImageToCrop(null); setVisionUploaded(false); }} style={{ flex: 1, padding: '10px', borderRadius: '12px', border: 'none', background: 'var(--bg)', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 600, boxShadow: '4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light)' }}>
+                                        {t('cancel')}
+                                    </button>
+                                    <button onClick={handleCropComplete} style={{ flex: 2, padding: '10px', borderRadius: '12px', border: 'none', background: 'var(--bg)', color: 'var(--green-alert)', cursor: 'pointer', fontWeight: 700, boxShadow: '4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light)' }}>
+                                        {t('apply_crop')}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : visionPreview ? (
                             <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '9px 9px 18px var(--shadow-dark), -9px -9px 18px var(--shadow-light)' }}>
                                 <img src={visionPreview} alt="Captured preview" style={{ width: '100%', height: 'auto', display: 'block' }} />
                                 <button
@@ -473,7 +538,7 @@ const TriagePage = () => {
                     {/* Patient Info */}
                     <NeumorphicCard style={{ padding: '14px 18px' }}>
                         <p style={{ margin: '0 0 12px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            📝 Patient Info
+                            {t('triage.patient.title')}
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {['Aadhaar No. (12 Digits)', 'Patient Name', 'DOB (DD/MM/YYYY)', 'Sex (M/F/O)', 'Village'].map((field) => (
@@ -506,50 +571,50 @@ const TriagePage = () => {
                     {/* Manual Triage */}
                     <NeumorphicCard style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid var(--bg)', paddingBottom: '12px' }}>
-                            📋 Clinical Triage
+                            {t('triage.clinical.title')}
                         </p>
 
                         {/* Module 1 */}
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>Unusually sleepy, unconscious, or seizures?</span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>{t('triage.clinical.q1')}</span>
                                 <NeumorphicToggle defaultOn={triageData.m1_consciousness} onChange={(v) => updateTriage('m1_consciousness', v)} />
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>Vomiting everything or unable to drink/breastfeed?</span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>{t('triage.clinical.q2')}</span>
                                 <NeumorphicToggle defaultOn={triageData.m1_intake} onChange={(v) => updateTriage('m1_intake', v)} />
                             </div>
                         </div>
 
                         {/* Module 2 */}
                         <div style={{ paddingTop: '16px', borderTop: '2px solid var(--bg)' }}>
-                            <NeumorphicSlider label="Cough Duration" value={triageData.m2_cough} onChange={(v) => updateTriage('m2_cough', v)} options={['0 Days (None)', '3 to 14 Days', 'Over 2 Weeks']} />
-                            <NeumorphicSlider label="Breathing Difficulty" value={triageData.m2_breathing} onChange={(v) => updateTriage('m2_breathing', v)} options={['Normal/Calm', 'Fast Breathing', 'Gasping']} />
-                            <NeumorphicSlider label="Fever & Night Sweats" value={triageData.m2_fever} onChange={(v) => updateTriage('m2_fever', v)} options={['No Fever', 'Occasional', 'Frequent+Sweats']} />
+                            <NeumorphicSlider label={t('triage.clinical.m2.cough')} value={triageData.m2_cough} onChange={(v) => updateTriage('m2_cough', v)} options={[t('triage.clinical.m2.cough.0'), t('triage.clinical.m2.cough.1'), t('triage.clinical.m2.cough.2')]} />
+                            <NeumorphicSlider label={t('triage.clinical.m2.breathing')} value={triageData.m2_breathing} onChange={(v) => updateTriage('m2_breathing', v)} options={[t('triage.clinical.m2.breath.0'), t('triage.clinical.m2.breath.1'), t('triage.clinical.m2.breath.2')]} />
+                            <NeumorphicSlider label={t('triage.clinical.m2.fever')} value={triageData.m2_fever} onChange={(v) => updateTriage('m2_fever', v)} options={[t('triage.clinical.m2.fever.0'), t('triage.clinical.m2.fever.1'), t('triage.clinical.m2.fever.2')]} />
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px', marginTop: '20px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>Coughing up blood?</span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>{t('triage.clinical.m2.blood')}</span>
                                 <NeumorphicToggle defaultOn={triageData.m2_blood} onChange={(v) => updateTriage('m2_blood', v)} />
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>Occupational Hazard (Quarry/Mine)?</span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>{t('triage.clinical.m2.occup')}</span>
                                 <NeumorphicToggle defaultOn={triageData.m2_silicosis} onChange={(v) => updateTriage('m2_silicosis', v)} />
                             </div>
                         </div>
 
                         {/* Module 3 */}
                         <div style={{ paddingTop: '16px', borderTop: '2px solid var(--bg)' }}>
-                            <NeumorphicSlider label="Dizziness & Vision" value={triageData.m3_dizziness} onChange={(v) => updateTriage('m3_dizziness', v)} options={['Never', 'Sometimes standing', 'Frequent blurry']} />
-                            <NeumorphicSlider label="Physical Weakness" value={triageData.m3_fatigue} onChange={(v) => updateTriage('m3_fatigue', v)} options={['Normal Energy', 'Tires Quickly', 'Too weak to stand']} />
-                            <NeumorphicSlider label="Headache / Body Pain" value={triageData.m3_pain} onChange={(v) => updateTriage('m3_pain', v)} options={['No Pain', 'Mild Ache', 'Severe/Throbbing']} />
-                            <NeumorphicSlider label="Visible Paleness" value={triageData.m3_paleness} onChange={(v) => updateTriage('m3_paleness', v)} options={['Normal / Pink', 'Slightly Pale', 'Very White']} />
-                            <NeumorphicSlider label="Appetite & Weight" value={triageData.m3_appetite} onChange={(v) => updateTriage('m3_appetite', v)} options={['Normal Weight', 'Eating Less', 'Severe Weight Loss']} />
+                            <NeumorphicSlider label={t('triage.clinical.m3.dizziness')} value={triageData.m3_dizziness} onChange={(v) => updateTriage('m3_dizziness', v)} options={['Never', 'Sometimes standing', 'Frequent blurry']} />
+                            <NeumorphicSlider label={t('triage.clinical.m3.fatigue')} value={triageData.m3_fatigue} onChange={(v) => updateTriage('m3_fatigue', v)} options={['Normal Energy', 'Tires Quickly', 'Too weak to stand']} />
+                            <NeumorphicSlider label={t('triage.clinical.m3.pain')} value={triageData.m3_pain} onChange={(v) => updateTriage('m3_pain', v)} options={['No Pain', 'Mild Ache', 'Severe/Throbbing']} />
+                            <NeumorphicSlider label={t('triage.clinical.m3.paleness')} value={triageData.m3_paleness} onChange={(v) => updateTriage('m3_paleness', v)} options={['Normal / Pink', 'Slightly Pale', 'Very White']} />
+                            <NeumorphicSlider label={t('triage.clinical.m3.appetite')} value={triageData.m3_appetite} onChange={(v) => updateTriage('m3_appetite', v)} options={['Normal Weight', 'Eating Less', 'Severe Weight Loss']} />
                         </div>
 
                         {/* Module 4 */}
                         <div style={{ paddingTop: '16px', borderTop: '2px solid var(--bg)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>Pregnant or gave birth in last 6 months?</span>
+                                <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.4 }}>{t('triage.clinical.m4.maternal')}</span>
                                 <NeumorphicToggle defaultOn={triageData.m4_maternal} onChange={(v) => updateTriage('m4_maternal', v)} />
                             </div>
                         </div>
@@ -575,7 +640,7 @@ const TriagePage = () => {
                             transition: 'all 0.2s ease',
                         }}
                     >
-                        {audioProgress < 100 ? '⏳ Record Audio First' : '🔬 Run AI Analysis →'}
+                        {audioProgress < 100 ? t('triage.btn.record_first') : t('triage.btn.run_ai')}
                     </button>
                 </>
             )}
@@ -616,91 +681,81 @@ const TriagePage = () => {
                             🔬 AI Inference Result
                         </p>
 
-                        {/* Risk Score Display */}
-                        <div
-                            style={{
-                                padding: '20px',
-                                borderRadius: '16px',
-                                background: 'var(--bg)',
-                                boxShadow: riskLevel === 'red'
-                                    ? `inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light), 0 0 20px rgba(255,107,107,0.2)`
+                        {/* Overall Risk Banner */}
+                        <div style={{
+                            padding: '20px',
+                            borderRadius: '16px',
+                            background: 'var(--bg)',
+                            boxShadow: riskLevel === 'red'
+                                ? `inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light), 0 0 20px rgba(255,107,107,0.2)`
+                                : riskLevel === 'yellow'
+                                    ? `inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light), 0 0 20px rgba(255,193,7,0.2)`
                                     : `inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light), 0 0 20px rgba(32,201,151,0.2)`,
-                                textAlign: 'center',
-                                marginBottom: '16px',
-                            }}
-                        >
+                            textAlign: 'center',
+                            marginBottom: '16px',
+                        }}>
                             <div style={{ fontSize: '48px', marginBottom: '8px' }}>
-                                {riskLevel === 'red' ? '🚨' : '✅'}
+                                {riskLevel === 'red' ? '🚨' : riskLevel === 'yellow' ? '⚠️' : '✅'}
                             </div>
-                            <div
-                                style={{
-                                    display: 'inline-block',
-                                    padding: '6px 20px',
-                                    borderRadius: '50px',
-                                    background: 'var(--bg)',
-                                    boxShadow: '4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light)',
-                                    color: riskLevel === 'red' ? 'var(--red-alert)' : 'var(--green-alert)',
-                                    fontSize: '16px',
-                                    fontWeight: 800,
-                                    letterSpacing: '0.05em',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                {riskLevel === 'red' ? '⚠ RED ALERT' : '✓ GREEN — CLEAR'}
+                            <div style={{
+                                display: 'inline-block',
+                                padding: '6px 20px',
+                                borderRadius: '50px',
+                                background: 'var(--bg)',
+                                boxShadow: '4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light)',
+                                color: riskLevel === 'red' ? 'var(--red-alert)' : riskLevel === 'yellow' ? '#f5a623' : 'var(--green-alert)',
+                                fontSize: '16px',
+                                fontWeight: 800,
+                                letterSpacing: '0.05em',
+                                marginBottom: '8px',
+                            }}>
+                                {riskLevel === 'red' ? '⚠ RED ALERT — HIGH RISK' : riskLevel === 'yellow' ? '◈ YELLOW — MODERATE RISK' : '✓ GREEN — CLEAR'}
                             </div>
                             <p style={{ margin: '8px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                {riskLevel === 'red'
-                                    ? 'High probability of active TB / Pneumonia. Refer to district hospital immediately.'
-                                    : 'Low risk indicators. Continue routine monitoring.'}
+                                {analyzeResult?.summary ||
+                                    (riskLevel === 'red'
+                                        ? 'High probability of active illness. Refer to district hospital immediately.'
+                                        : 'Low risk indicators. Continue routine monitoring.')}
                             </p>
                         </div>
 
-                        {/* Confidence Score */}
+                        {/* Dual Model Breakdown — shown when /analyze was used */}
+                        {analyzeResult && (
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                                {/* Cough Card */}
+                                <div style={{ flex: 1, padding: '14px', borderRadius: '14px', background: 'var(--bg)', boxShadow: '5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light)' }}>
+                                    <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>🎙️ Cough</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: analyzeResult.cough.risk === 'red' ? 'var(--red-alert)' : 'var(--green-alert)' }}>
+                                        {analyzeResult.cough.label}
+                                    </p>
+                                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>{analyzeResult.cough.confidence.toFixed(1)}% confidence</p>
+                                </div>
+                                {/* Eye Card */}
+                                <div style={{ flex: 1, padding: '14px', borderRadius: '14px', background: 'var(--bg)', boxShadow: '5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light)' }}>
+                                    <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>👁️ Eye Scan</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 800, color: analyzeResult.eye.risk === 'red' ? 'var(--red-alert)' : 'var(--green-alert)' }}>
+                                        {analyzeResult.eye.label}
+                                    </p>
+                                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>{analyzeResult.eye.confidence.toFixed(1)}% confidence</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Overall Confidence bar */}
                         <div style={{ marginBottom: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Confidence Score</span>
-                                <span style={{ fontSize: '13px', fontWeight: 700, color: riskLevel === 'red' ? 'var(--red-alert)' : 'var(--green-alert)' }}>{confidence}%</span>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>Overall Confidence</span>
+                                <span style={{ fontSize: '13px', fontWeight: 700, color: riskLevel === 'red' ? 'var(--red-alert)' : riskLevel === 'yellow' ? '#f5a623' : 'var(--green-alert)' }}>{confidence}%</span>
                             </div>
-                            <NeumorphicProgressBar value={parseFloat(confidence)} color={riskLevel === 'red' ? 'var(--red-alert)' : 'var(--green-alert)'} height={14} />
+                            <NeumorphicProgressBar value={parseFloat(confidence)} color={riskLevel === 'red' ? 'var(--red-alert)' : riskLevel === 'yellow' ? '#f5a623' : 'var(--green-alert)'} height={14} />
                         </div>
-
-
                     </NeumorphicCard>
 
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button
-                            onClick={reset}
-                            style={{
-                                flex: 1,
-                                padding: '14px',
-                                borderRadius: '16px',
-                                border: 'none',
-                                background: 'var(--bg)',
-                                boxShadow: '7px 7px 14px var(--shadow-dark), -7px -7px 14px var(--shadow-light)',
-                                color: 'var(--text-secondary)',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                fontFamily: 'Inter, sans-serif',
-                            }}
-                        >
+                        <button onClick={reset} style={{ flex: 1, padding: '14px', borderRadius: '16px', border: 'none', background: 'var(--bg)', boxShadow: '7px 7px 14px var(--shadow-dark), -7px -7px 14px var(--shadow-light)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                             🔄 New Triage
                         </button>
-                        <button
-                            style={{
-                                flex: 1,
-                                padding: '14px',
-                                borderRadius: '16px',
-                                border: 'none',
-                                background: 'var(--bg)',
-                                boxShadow: '7px 7px 14px var(--shadow-dark), -7px -7px 14px var(--shadow-light)',
-                                color: 'var(--green-alert)',
-                                fontSize: '13px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                fontFamily: 'Inter, sans-serif',
-                            }}
-                        >
+                        <button style={{ flex: 1, padding: '14px', borderRadius: '16px', border: 'none', background: 'var(--bg)', boxShadow: '7px 7px 14px var(--shadow-dark), -7px -7px 14px var(--shadow-light)', color: 'var(--green-alert)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                             💾 Save & Sync
                         </button>
                     </div>

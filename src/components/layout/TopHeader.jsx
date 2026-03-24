@@ -20,9 +20,7 @@ const TopHeader = ({ title }) => {
         >
             {/* Left: Greeting + Title */}
             <div>
-                <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    Good Evening, Dr. Priya 👋
-                </p>
+
                 <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                     {title}
                 </h1>

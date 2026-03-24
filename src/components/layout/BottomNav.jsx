@@ -6,7 +6,11 @@ const NAV_ITEMS = [
     { id: 'settings', icon: '⚙️', label: 'Settings' },
 ]
 
+import { useLanguage } from '../../context/LanguageContext'
+
 const BottomNav = ({ activePage, onNavigate }) => {
+    const { t } = useLanguage()
+
     return (
         <div
             style={{
@@ -56,7 +60,7 @@ const BottomNav = ({ activePage, onNavigate }) => {
                         >
                             <span style={{ fontSize: '22px', lineHeight: 1 }}>{item.icon}</span>
                             <span style={{ fontSize: '9px', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '2px' }}>
-                                {item.label}
+                                {t(`nav.${item.id}`)}
                             </span>
                         </button>
                     )
@@ -109,7 +113,7 @@ const BottomNav = ({ activePage, onNavigate }) => {
                                 transition: 'color 0.2s ease',
                             }}
                         >
-                            {item.label}
+                            {t(`nav.${item.id}`)}
                         </span>
                     </button>
                 )

@@ -1,14 +1,9 @@
 import { useState } from 'react'
 import NeumorphicCard from '../components/ui/NeumorphicCard'
 import NeumorphicButton from '../components/ui/NeumorphicButton'
+import { useLanguage } from '../context/LanguageContext'
 
 const RECENT_PATIENTS = []
-
-const QUICK_ACTIONS = [
-    { icon: '🔄', label: 'Sync Data' },
-    { icon: '📝', label: 'New Triage' },
-    { icon: '📊', label: 'Generate Report' },
-]
 
 const QuickActionButton = ({ icon, label, onClick }) => {
     return (
@@ -23,8 +18,15 @@ const QuickActionButton = ({ icon, label, onClick }) => {
 }
 
 const HomePage = ({ onNavigate }) => {
+    const { t } = useLanguage()
     const [showReportOptions, setShowReportOptions] = useState(false)
     const [reportData, setReportData] = useState(null)
+
+    const QUICK_ACTIONS = [
+        { icon: '🔄', label: t('home.sync_data') },
+        { icon: '📝', label: t('home.new_triage') },
+        { icon: '📊', label: t('home.generate_report') },
+    ]
 
     const generateMockReport = (duration) => {
         let stats = {}
@@ -101,7 +103,7 @@ const HomePage = ({ onNavigate }) => {
             {/* Quick Actions */}
             <div>
                 <p style={{ margin: '0 0 12px 4px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Quick Actions
+                    {t('home.quick_actions')}
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                     {QUICK_ACTIONS.map((action) => (
@@ -109,9 +111,9 @@ const HomePage = ({ onNavigate }) => {
                             key={action.label} 
                             {...action} 
                             onClick={() => {
-                                if (action.label === 'New Triage') onNavigate && onNavigate('triage');
-                                if (action.label === 'Generate Report') setShowReportOptions(true);
-                                if (action.label === 'Sync Data') alert('Syncing Data...');
+                                if (action.label === t('home.new_triage')) onNavigate && onNavigate('triage');
+                                if (action.label === t('home.generate_report')) setShowReportOptions(true);
+                                if (action.label === t('home.sync_data')) alert('Syncing Data...');
                             }} 
                         />
                     ))}
@@ -122,7 +124,7 @@ const HomePage = ({ onNavigate }) => {
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        Recent Patients
+                        {t('home.recent_activity')}
                     </p>
                     <button
                         onClick={() => onNavigate('patients')}

@@ -9,15 +9,19 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 
-const PAGE_TITLES = {
-  home: 'Dashboard',
-  patients: 'Patients',
-  triage: 'New Triage',
-  analytics: 'Analytics',
-  settings: 'Settings',
-}
+import { LanguageProvider, useLanguage } from './context/LanguageContext'
 
-function App() {
+function AppContent() {
+  const { t } = useLanguage()
+  
+  const PAGE_TITLES = {
+    home: t('nav.home'),
+    patients: t('nav.patients'),
+    triage: t('nav.triage'),
+    analytics: 'Analytics',
+    settings: t('nav.settings'),
+  }
+
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [activePage, setActivePage] = useState('home')
 
@@ -71,6 +75,14 @@ function App() {
         </>
       )}
     </div>
+  )
+}
+
+function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   )
 }
 

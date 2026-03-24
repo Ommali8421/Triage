@@ -2,6 +2,7 @@ import { useState } from 'react'
 import NeumorphicCard from '../components/ui/NeumorphicCard'
 import NeumorphicToggle from '../components/ui/NeumorphicToggle'
 import NeumorphicProgressBar from '../components/ui/NeumorphicProgressBar'
+import { useLanguage } from '../context/LanguageContext'
 
 const TOGGLES = [
     { id: 'offline', label: 'Offline Sync Manager', icon: '📶', desc: 'Auto-sync when network is available', default: true },
@@ -15,6 +16,7 @@ const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
         Object.fromEntries(TOGGLES.map((t) => [t.id, t.default]))
     )
     const [alertPressed, setAlertPressed] = useState(false)
+    const { language, setLanguage, t } = useLanguage()
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -95,6 +97,36 @@ const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
                             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)' }}>{item.size}</div>
                             <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{item.label}</div>
                         </div>
+                    ))}
+                </div>
+            </NeumorphicCard>
+
+            {/* Language Selection */}
+            <NeumorphicCard style={{ padding: '18px' }}>
+                <p style={{ margin: '0 0 16px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    🌐 {t('settings.language')}
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    {['en', 'hi', 'mr'].map((lang) => (
+                        <button
+                            key={lang}
+                            onClick={() => setLanguage(lang)}
+                            style={{
+                                flex: 1,
+                                padding: '12px',
+                                borderRadius: '12px',
+                                border: 'none',
+                                background: 'var(--bg)',
+                                boxShadow: language === lang
+                                    ? 'inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light)'
+                                    : '4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light)',
+                                color: language === lang ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                fontWeight: language === lang ? 700 : 500,
+                                cursor: 'pointer',
+                            }}
+                        >
+                            {lang === 'en' ? 'English' : lang === 'hi' ? 'हिंदी' : 'मराठी'}
+                        </button>
                     ))}
                 </div>
             </NeumorphicCard>

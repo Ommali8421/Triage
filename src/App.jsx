@@ -30,7 +30,7 @@ function AppContent() {
   const [activePage, setActivePage] = useState('home')
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    return localStorage.getItem('theme') === 'dark'
   })
 
   useEffect(() => {

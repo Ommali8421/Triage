@@ -58,8 +58,8 @@ const AnalyticsPage = ({ userRole }) => {
     useEffect(() => {
         const fetchRecords = async () => {
             try {
-                const backendBase = `http://${window.location.hostname}:5001`
-                const res = await fetch(`${backendBase}/records`)
+                const backendBase = `/api`;
+                const res = await fetch(`${backendBase}/records`);
                 if (res.ok) {
                     const data = await res.json()
                     setRecords(data)

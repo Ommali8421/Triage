@@ -26,8 +26,8 @@ const HomePage = ({ onNavigate, userRole, userName }) => {
     useEffect(() => {
         const fetchPatients = async () => {
             try {
-                const backendBase = `http://${window.location.hostname}:5001`
-                const res = await fetch(`${backendBase}/records`)
+                const backendBase = `/api`;
+                const res = await fetch(`${backendBase}/records`);
                 if (res.ok) {
                     const data = await res.json()
                     

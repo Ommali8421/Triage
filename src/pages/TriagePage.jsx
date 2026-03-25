@@ -364,7 +364,7 @@ const TriagePage = ({ userName }) => {
         formData.append('audio', audioFile, audioFile.name || 'recording.webm')
 
         // Use http (not https) because the Python backend doesn't have TLS
-        const backendBase = `http://${window.location.hostname}:5001`
+        const backendBase = `/api`
 
         if (visionFile) {
             formData.append('image', visionFile, visionFile.name || 'eye.jpg')

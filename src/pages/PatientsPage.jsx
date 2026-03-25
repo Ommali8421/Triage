@@ -150,8 +150,8 @@ const PatientsPage = ({ userRole, userName }) => {
     useEffect(() => {
         const load = async () => {
             try {
-                const backendBase = `http://${window.location.hostname}:5001`
-                const res = await fetch(`${backendBase}/records`)
+                const backendBase = `/api`;
+                const res = await fetch(`${backendBase}/records`);
                 if (!res.ok) throw new Error('Network response was not ok')
                 const data = await res.json()
                 
@@ -182,8 +182,8 @@ const PatientsPage = ({ userRole, userName }) => {
         if (!window.confirm(t('patients.confirm_delete'))) return;
         
         try {
-            const backendBase = `http://${window.location.hostname}:5001`
-            await fetch(`${backendBase}/records/${id}`, { method: 'DELETE' })
+            const backendBase = `/api`;
+            await fetch(`${backendBase}/records/${id}`, { method: 'DELETE' });
             
             const updated = patients.filter(p => p.id !== id)
             setPatients(updated)

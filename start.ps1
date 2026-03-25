@@ -5,11 +5,11 @@ function Kill-Port {
     param([int]$Port)
     $connections = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
     if ($connections) {
-        $pids = $connections.OwningProcess | Sort-Object -Unique
-        foreach ($pid in $pids) {
+        $processIds = $connections.OwningProcess | Sort-Object -Unique
+        foreach ($processId in $processIds) {
             try {
-                taskkill /F /PID $pid 2>$null | Out-Null
-                Write-Host "  Killed PID $pid on port $Port" -ForegroundColor Yellow
+                taskkill /F /PID $processId 2>$null | Out-Null
+                Write-Host "  Killed PID $processId on port $Port" -ForegroundColor Yellow
             } catch {}
         }
         # Wait for OS to release the socket

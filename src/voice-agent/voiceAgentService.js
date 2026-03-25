@@ -1,5 +1,5 @@
 // Use import.meta.env for Vite instead of process.env
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 class VoiceAgentService {
   constructor() {

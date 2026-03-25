@@ -1,9 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import NeumorphicCard from '../components/ui/NeumorphicCard'
 import NeumorphicButton from '../components/ui/NeumorphicButton'
 import { useLanguage } from '../context/LanguageContext'
-
-const RECENT_PATIENTS = []
 
 const QuickActionButton = ({ icon, label, onClick }) => {
     return (
@@ -17,16 +15,71 @@ const QuickActionButton = ({ icon, label, onClick }) => {
     )
 }
 
-const HomePage = ({ onNavigate }) => {
+const HomePage = ({ onNavigate, userRole, userName }) => {
     const { t } = useLanguage()
     const [showReportOptions, setShowReportOptions] = useState(false)
     const [reportData, setReportData] = useState(null)
+    const [recentPatients, setRecentPatients] = useState([])
+    const [overviewStats, setOverviewStats] = useState({ total: 0, red: 0, yellow: 0, green: 0 })
 
-    const QUICK_ACTIONS = [
+    useEffect(() => {
+        const fetchPatients = async () => {
+            try {
+                const backendBase = `http://${window.location.hostname}:5001`
+                const res = await fetch(`${backendBase}/records`)
+                if (res.ok) {
+                    const data = await res.json()
+                    
+                    // --- Calculate TODAY'S OVERVIEW ---
+                    const today = new Date().toDateString()
+                    let relevantRecords = data
+                    
+                    if (userRole !== 'admin') {
+                        relevantRecords = data.filter(r => r.workerId === userName)
+                    }
+                    
+                    const todayRecords = relevantRecords.filter(r => new Date(r.timestamp).toDateString() === today)
+                    
+                    let red = 0, yellow = 0, green = 0
+                    todayRecords.forEach(r => {
+                        if (r.riskLevel === 'red') red++
+                        else if (r.riskLevel === 'yellow') yellow++
+                        else green++
+                    })
+                    setOverviewStats({ total: todayRecords.length, red, yellow, green })
+
+                    // --- Recent Activity ---
+                    const latestRecords = userRole === 'admin' ? data.slice(0, 4) : relevantRecords.slice(0, 4)
+                    const latest = latestRecords.map(record => {
+                        const isSevere = record.clinicalDecision?.some(d => d.urgency === 'emergency' || d.urgency === 'urgent');
+                        const mainCondition = record.clinicalDecision?.[0]?.assessment || 'Assessment Pending';
+                        const time = new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        
+                        return {
+                            id: record.id,
+                            name: record.patient?.name || 'Unknown',
+                            condition: mainCondition,
+                            status: isSevere ? 'red' : 'green',
+                            time: time
+                        }
+                    })
+                    setRecentPatients(latest)
+                }
+            } catch (error) {
+                console.error("Failed to load recent patients", error)
+            }
+        }
+        fetchPatients()
+    }, [userRole, userName])
+
+    let QUICK_ACTIONS = [
         { icon: '🔄', label: t('home.sync_data') },
         { icon: '📝', label: t('home.new_triage') },
         { icon: '📊', label: t('home.generate_report') },
     ]
+    if (userRole === 'admin') {
+        QUICK_ACTIONS = QUICK_ACTIONS.filter(a => a.label !== t('home.new_triage'))
+    }
 
     const generateMockReport = (duration) => {
         let stats = {}
@@ -50,10 +103,12 @@ const HomePage = ({ onNavigate }) => {
             <NeumorphicCard>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>TODAY'S OVERVIEW</p>
+                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {t('home.today_overview')} {userRole === 'admin' && t('home.all_depts')}
+                        </p>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '6px' }}>
-                            <span style={{ fontSize: '36px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>0</span>
-                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 500 }}>Screenings</span>
+                            <span style={{ fontSize: '36px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{overviewStats.total}</span>
+                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 500 }}>{t('home.screenings')}</span>
                         </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -68,19 +123,19 @@ const HomePage = ({ onNavigate }) => {
                                 padding: '8px 14px',
                             }}
                         >
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>0 Pending Syncs</span>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>0 {t('home.pending_syncs')}</span>
                         </div>
                         <div style={{ marginTop: '8px' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Last sync: 2h ago</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('home.last_sync')}: 2h {t('home.ago')}</span>
                         </div>
                     </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', marginTop: '18px' }}>
                     {[
-                        { label: 'Critical', value: '0', color: 'var(--red-alert)' },
-                        { label: 'Moderate', value: '0', color: '#ffc107' },
-                        { label: 'Clear', value: '0', color: 'var(--green-alert)' },
+                        { label: t('home.critical'), value: overviewStats.red.toString(), color: 'var(--red-alert)' },
+                        { label: t('home.moderate'), value: overviewStats.yellow.toString(), color: '#ffc107' },
+                        { label: t('home.clear'), value: overviewStats.green.toString(), color: 'var(--green-alert)' },
                     ].map((stat) => (
                         <div
                             key={stat.label}
@@ -105,7 +160,7 @@ const HomePage = ({ onNavigate }) => {
                 <p style={{ margin: '0 0 12px 4px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {t('home.quick_actions')}
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${QUICK_ACTIONS.length}, 1fr)`, gap: '14px' }}>
                     {QUICK_ACTIONS.map((action) => (
                         <QuickActionButton 
                             key={action.label} 
@@ -130,12 +185,15 @@ const HomePage = ({ onNavigate }) => {
                         onClick={() => onNavigate('patients')}
                         style={{ background: 'none', border: 'none', color: 'var(--green-alert)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                     >
-                        View All →
+                        {t('home.view_all')}
                     </button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {RECENT_PATIENTS.map((patient) => (
-                        <NeumorphicCard key={patient.name} style={{ padding: '14px 18px' }}>
+                    {recentPatients.length === 0 && (
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', margin: '20px 0' }}>{t('home.no_recent')}</p>
+                    )}
+                    {recentPatients.map((patient) => (
+                        <NeumorphicCard key={patient.id} style={{ padding: '14px 18px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                                 {/* Avatar */}
                                 <div

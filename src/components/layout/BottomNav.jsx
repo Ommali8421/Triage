@@ -1,15 +1,20 @@
 import { useLanguage } from '../../context/LanguageContext'
 
-const NAV_ITEMS = [
-    { id: 'home', icon: '🏠', label: 'Home' },
-    { id: 'patients', icon: '👥', label: 'Patients' },
-    { id: 'triage', icon: '🟢', label: 'Triage', isCenter: true },
-    { id: 'voice', icon: '🗣️', label: 'Voice' },
-    { id: 'settings', icon: '⚙️', label: 'Settings' },
-]
-
-const BottomNav = ({ activePage, onNavigate }) => {
+const BottomNav = ({ activePage, onNavigate, userRole }) => {
     const { t } = useLanguage()
+
+    const navItems = userRole === 'admin' ? [
+        { id: 'home', icon: '🏠', label: 'Home' },
+        { id: 'patients', icon: '👥', label: 'Patients' },
+        { id: 'analytics', icon: '📊', label: 'Analytics' },
+        { id: 'settings', icon: '⚙️', label: 'Settings' },
+    ] : [
+        { id: 'home', icon: '🏠', label: 'Home' },
+        { id: 'patients', icon: '👥', label: 'Patients' },
+        { id: 'triage', icon: '🟢', label: 'Triage', isCenter: true },
+        { id: 'voice', icon: '🗣️', label: 'Voice' },
+        { id: 'settings', icon: '⚙️', label: 'Settings' },
+    ];
 
     return (
         <div
@@ -30,7 +35,7 @@ const BottomNav = ({ activePage, onNavigate }) => {
                 padding: '0 10px',
             }}
         >
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
                 if (item.isCenter) {
                     return (
                         <button

@@ -1,8 +1,8 @@
 import React from 'react';
+import NeumorphicCard from '../components/ui/NeumorphicCard';
 
 const VoiceAgentUI = ({
   isConnected,
-  isSpeaking,
   isListening,
   transcription,
   aiResponse,
@@ -13,157 +13,132 @@ const VoiceAgentUI = ({
   onToggleMicrophone
 }) => {
   return (
-    <div className="space-y-6">
-      {/* Connection Status Card */}
-      <div 
-        className="p-6 rounded-2xl"
-        style={{
-          background: 'var(--bg)',
-          boxShadow: 'var(--shadow-raised)',
-        }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Connection Status</h2>
-          <div className="flex items-center gap-2">
-            <div 
-              className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-            />
-            <span className="text-sm">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {/* Top Controls: Connection & Microphone in one row if possible, or stacked */}
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
         
-        <div className="flex gap-4">
+        {/* Connection Status Card */}
+        <NeumorphicCard style={{ flex: '1 1 300px', padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Connection Status</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ 
+                width: '12px', height: '12px', borderRadius: '50%', 
+                background: isConnected ? 'var(--green-alert)' : 'var(--red-alert)',
+                boxShadow: isConnected ? '0 0 10px rgba(46, 204, 113, 0.5)' : '0 0 10px rgba(231, 76, 60, 0.5)'
+              }} />
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={onStartCall}
+              disabled={isConnected}
+              style={{
+                flex: 1, padding: '12px 16px', borderRadius: '12px', border: 'none',
+                background: isConnected ? 'transparent' : 'var(--bg)',
+                color: isConnected ? 'var(--text-secondary)' : 'var(--text-primary)',
+                boxShadow: isConnected ? 'inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light)' : '5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light)',
+                cursor: isConnected ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '13px', transition: 'all 0.2s ease'
+              }}
+            >
+              ▶ Start Call
+            </button>
+            <button
+              onClick={onEndCall}
+              disabled={!isConnected}
+              style={{
+                flex: 1, padding: '12px 16px', borderRadius: '12px', border: 'none',
+                background: !isConnected ? 'transparent' : 'var(--bg)',
+                color: !isConnected ? 'var(--text-secondary)' : 'var(--red-alert)',
+                boxShadow: !isConnected ? 'inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light)' : '5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light)',
+                cursor: !isConnected ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '13px', transition: 'all 0.2s ease'
+              }}
+            >
+              ⏹ End Call
+            </button>
+          </div>
+        </NeumorphicCard>
+
+        {/* Microphone Control */}
+        <NeumorphicCard style={{ flex: '1 1 200px', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <button
-            onClick={onStartCall}
-            disabled={isConnected}
-            className="px-6 py-3 rounded-xl font-medium transition-all duration-200"
+            onClick={onToggleMicrophone}
+            disabled={!isConnected}
             style={{
-              background: isConnected ? '#e5e7eb' : 'var(--bg)',
-              color: isConnected ? '#9ca3af' : 'var(--text-primary)',
-              boxShadow: isConnected ? 'var(--shadow-pressed-sm)' : 'var(--shadow-raised-sm)',
-              cursor: isConnected ? 'not-allowed' : 'pointer',
+              width: '80px', height: '80px', borderRadius: '50%', border: 'none',
+              background: 'var(--bg)', position: 'relative',
+              boxShadow: !isConnected ? 'inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light)' : '6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light)',
+              cursor: !isConnected ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease'
             }}
           >
-            Start Call
+            <span style={{ fontSize: '32px' }}>
+              {!isConnected ? '🎤' : isListening ? '🔴' : '🎤'}
+            </span>
+            {isListening && (
+              <div style={{ position: 'absolute', inset: '-6px', borderRadius: '50%', border: '2px solid rgba(255,107,107,0.5)', animation: 'pulse 1s ease-in-out infinite' }} />
+            )}
           </button>
           
-          <button
-            onClick={onEndCall}
-            disabled={!isConnected}
-            className="px-6 py-3 rounded-xl font-medium transition-all duration-200"
-            style={{
-              background: !isConnected ? '#e5e7eb' : 'var(--bg)',
-              color: !isConnected ? '#9ca3af' : 'var(--text-primary)',
-              boxShadow: !isConnected ? 'var(--shadow-pressed-sm)' : 'var(--shadow-raised-sm)',
-              cursor: !isConnected ? 'not-allowed' : 'pointer',
-            }}
-          >
-            End Call
-          </button>
-        </div>
+          <p style={{ margin: '12px 0 0', fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            {!isConnected ? 'Connect to start' : isListening ? 'Listening...' : 'Click to speak'}
+          </p>
+        </NeumorphicCard>
       </div>
 
-      {/* Microphone Control */}
-      <div 
-        className="p-6 rounded-2xl text-center"
-        style={{
-          background: 'var(--bg)',
-          boxShadow: 'var(--shadow-raised)',
-        }}
-      >
-        <button
-          onClick={onToggleMicrophone}
-          disabled={!isConnected}
-          className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto transition-all duration-200 ${
-            !isConnected ? 'bg-gray-300 cursor-not-allowed' : 
-            isListening ? 'bg-red-400' : 'bg-white'
-          }`}
-          style={{
-            boxShadow: !isConnected ? 'var(--shadow-pressed)' : 
-                       isListening ? '0 0 20px rgba(239, 68, 68, 0.5)' : 'var(--shadow-raised-lg)',
-          }}
-        >
-          <span className="text-2xl">
-            {!isConnected ? '🎤' : isListening ? '🔴' : '🎤'}
-          </span>
-        </button>
-        
-        <p className="mt-4 text-sm text-gray-600">
-          {!isConnected ? 'Connect to start' : 
-           isListening ? 'Listening...' : 'Click to speak'}
-        </p>
-      </div>
-
-      {/* Transcription Panel */}
-      <div 
-        className="p-6 rounded-2xl"
-        style={{
-          background: 'var(--bg)',
-          boxShadow: 'var(--shadow-raised)',
-        }}
-      >
-        <h3 className="text-lg font-semibold mb-4 text-gray-800">Your Speech</h3>
-        <div className="min-h-20 p-4 rounded-xl bg-white bg-opacity-50">
-          {transcription ? (
-            <p className="text-gray-700">{transcription}</p>
-          ) : (
-            <p className="text-gray-400 italic">Your speech will appear here...</p>
-          )}
+      {/* Transcription & AI Panels */}
+      <NeumorphicCard style={{ padding: '20px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🗣️ Your Speech</h3>
+        <div style={{ minHeight: '80px', padding: '16px', borderRadius: '16px', background: 'var(--bg)', boxShadow: 'inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light)', fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+          {transcription ? transcription : <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Waiting for speech...</span>}
         </div>
-      </div>
+      </NeumorphicCard>
 
-      {/* AI Response Panel */}
-      <div 
-        className="p-6 rounded-2xl"
-        style={{
-          background: 'var(--bg)',
-          boxShadow: 'var(--shadow-raised)',
-        }}
-      >
-        <h3 className="text-lg font-semibold mb-4 text-gray-800">AI Response</h3>
-        <div className="min-h-20 p-4 rounded-xl bg-white bg-opacity-50">
-          {aiResponse ? (
-            <p className="text-gray-700">{aiResponse}</p>
-          ) : (
-            <p className="text-gray-400 italic">AI responses will appear here...</p>
-          )}
+      <NeumorphicCard style={{ padding: '20px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 700, color: 'var(--blue-brand)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🤖 AI Response</h3>
+        <div style={{ minHeight: '80px', padding: '16px', borderRadius: '16px', background: 'var(--bg)', boxShadow: 'inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light)', fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+          {aiResponse ? aiResponse : <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>AI responses will appear here...</span>}
         </div>
-      </div>
+      </NeumorphicCard>
 
       {/* Triage Results */}
       {triageLevel && (
-        <div 
-          className="p-6 rounded-2xl"
-          style={{
-            background: 'var(--bg)',
-            boxShadow: 'var(--shadow-raised)',
-          }}
-        >
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Triage Assessment</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="font-medium">Risk Level:</span>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                triageLevel === 'CRITICAL' ? 'bg-red-100 text-red-800' :
-                triageLevel === 'HIGH' ? 'bg-orange-100 text-orange-800' :
-                triageLevel === 'MODERATE' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-green-100 text-green-800'
-              }`}>
+        <NeumorphicCard style={{ padding: '20px', borderLeft: '4px solid var(--blue-brand)' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>📊 Live Triage Assessment</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>Risk Level:</span>
+              <span style={{ 
+                padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 800,
+                background: 'var(--bg)', boxShadow: '3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light)',
+                color: triageLevel === 'CRITICAL' ? 'var(--red-alert)' : triageLevel === 'HIGH' ? '#f5a623' : triageLevel === 'MODERATE' ? '#f5a623' : 'var(--green-alert)'
+              }}>
                 {triageLevel}
               </span>
             </div>
             
             {doctorRecommendation && (
-              <div>
-                <span className="font-medium">Recommended:</span>
-                <span className="ml-2 text-blue-600">{doctorRecommendation}</span>
+              <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg)', boxShadow: 'inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light)' }}>
+                <span style={{ display: 'block', marginBottom: '4px', fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Recommended Action</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{doctorRecommendation}</span>
               </div>
             )}
+
           </div>
-        </div>
+        </NeumorphicCard>
       )}
+
+      <style>{`
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+      `}</style>
     </div>
   );
 };

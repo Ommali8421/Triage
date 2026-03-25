@@ -13,7 +13,7 @@ const useVoiceAgent = () => {
   
   const roomRef = useRef(null);
   const recognitionRef = useRef(null);
-  const synthesisRef = useRef(null);
+
 
   // Browser Speech Recognition (fallback)
   const initializeSpeechRecognition = useCallback(() => {

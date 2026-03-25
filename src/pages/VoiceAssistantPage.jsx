@@ -1,49 +1,51 @@
 import React from 'react';
 import VoiceAgentPage from '../voice-agent/VoiceAgentPage';
+import NeumorphicCard from '../components/ui/NeumorphicCard';
+import { useLanguage } from '../context/LanguageContext';
 
 const VoiceAssistantPage = () => {
+  const { t } = useLanguage();
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header with Avatar */}
-      <div className="text-center mb-6">
-        <div className="flex justify-center mb-4">
-          {/* Male Doctor Avatar */}
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center relative overflow-hidden">
-            {/* Avatar Face */}
-            <div className="absolute w-12 h-12 bg-white rounded-full top-6"></div>
-            {/* Eyes */}
-            <div className="absolute w-2 h-2 bg-blue-800 rounded-full top-8 left-8"></div>
-            <div className="absolute w-2 h-2 bg-blue-800 rounded-full top-8 right-8"></div>
-            {/* Smile */}
-            <div className="absolute w-8 h-1 bg-blue-800 rounded-full bottom-8"></div>
-            {/* Doctor Coat */}
-            <div className="absolute w-20 h-12 bg-white bottom-0 rounded-t-xl"></div>
+      <NeumorphicCard style={{ textAlign: 'center', padding: '30px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          {/* Avatar code remains same */}
+          <div style={{
+            width: '96px', height: '96px', borderRadius: '50%', background: 'linear-gradient(135deg, #60a5fa, #2563eb)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden',
+            boxShadow: '6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light)'
+          }}>
+            <div style={{ position: 'absolute', width: '48px', height: '48px', background: 'white', borderRadius: '50%', top: '24px' }}></div>
+            <div style={{ position: 'absolute', width: '8px', height: '8px', background: '#1e3a8a', borderRadius: '50%', top: '32px', left: '32px' }}></div>
+            <div style={{ position: 'absolute', width: '8px', height: '8px', background: '#1e3a8a', borderRadius: '50%', top: '32px', right: '32px' }}></div>
+            <div style={{ position: 'absolute', width: '32px', height: '4px', background: '#1e3a8a', borderRadius: '4px', bottom: '32px' }}></div>
+            <div style={{ position: 'absolute', width: '80px', height: '48px', background: 'white', bottom: '0', borderRadius: '12px 12px 0 0' }}></div>
           </div>
         </div>
         
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          🗣️ AI Voice Assistant
+        <h1 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>
+          {t('voice.title')}
         </h1>
-        <p className="text-gray-600 text-sm">
-          Conversational healthcare support
+        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
+          {t('voice.subtitle')}
         </p>
-      </div>
+      </NeumorphicCard>
 
       {/* Voice Agent Component */}
-      <div className="bg-white rounded-2xl p-4 shadow-lg">
-        <VoiceAgentPage />
-      </div>
+      <VoiceAgentPage />
 
       {/* Instructions */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-        <h3 className="font-semibold text-blue-800 mb-2">How to use:</h3>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Click the microphone to start speaking</li>
-          <li>• Describe your symptoms clearly</li>
-          <li>• Emergency keywords are automatically detected</li>
-          <li>• Receive AI-powered triage assessment</li>
+      <NeumorphicCard style={{ padding: '20px' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 700, color: 'var(--blue-brand)' }}>{t('voice.how_to_use')}</h3>
+        <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <li>• {t('voice.step1')}</li>
+          <li>• {t('voice.step2')}</li>
+          <li>• {t('voice.step3')}</li>
+          <li>• {t('voice.step4')}</li>
         </ul>
-      </div>
+      </NeumorphicCard>
     </div>
   );
 };

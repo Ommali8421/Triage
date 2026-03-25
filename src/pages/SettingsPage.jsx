@@ -5,14 +5,14 @@ import NeumorphicProgressBar from '../components/ui/NeumorphicProgressBar'
 import { useLanguage } from '../context/LanguageContext'
 
 const TOGGLES = [
-    { id: 'offline', label: 'Offline Sync Manager', icon: '📶', desc: 'Auto-sync when network is available', default: true },
-    { id: 'bluetooth', label: 'Bluetooth Mesh Syncing', icon: '🔵', desc: 'Peer-to-peer data sharing nearby', default: false },
-    { id: 'cloud', label: 'Connect to Cloud', icon: '☁️', desc: 'Upload to national health registry', default: true },
-    { id: 'alerts', label: 'Push Alert Notifications', icon: '🔔', desc: 'Real-time critical case notifications', default: true },
+    { id: 'offline', labelKey: 'settings.offline_sync', icon: '📶', descKey: 'settings.offline_desc', default: true },
+    { id: 'bluetooth', labelKey: 'settings.mesh_sync', icon: '🔵', descKey: 'settings.mesh_desc', default: false },
+    { id: 'cloud', labelKey: 'settings.cloud_connect', icon: '☁️', descKey: 'settings.cloud_desc', default: true },
+    { id: 'alerts', labelKey: 'settings.push_alerts', icon: '🔔', descKey: 'settings.alerts_desc', default: true },
 ]
 
-const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
-    const [toggleStates, setToggleStates] = useState(
+const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout, userRole, userName }) => {
+    const [, setToggleStates] = useState(
         Object.fromEntries(TOGGLES.map((t) => [t.id, t.default]))
     )
     const [alertPressed, setAlertPressed] = useState(false)
@@ -21,65 +21,38 @@ const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-            {/* Profile Card */}
-            <NeumorphicCard style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div
-                    style={{
-                        width: '60px',
-                        height: '60px',
-                        borderRadius: '50%',
-                        background: 'var(--bg)',
-                        boxShadow: '6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '28px',
-                        flexShrink: 0,
-                    }}
-                >
-                    🩺
+            {/* Profile Summary */}
+            <NeumorphicCard style={{ padding: '24px 20px', textAlign: 'center' }}>
+                <div style={{
+                    width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 16px',
+                    background: 'var(--bg)', boxShadow: '6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px'
+                }}>
+                    {userRole === 'admin' ? '👨‍💻' : '👩‍⚕️'}
                 </div>
-                <div>
-                    <p style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Dr. Priya Sharma</p>
-                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>CHW ID: #TZ-2089 · Rampur PHC</p>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                        <span
-                            style={{
-                                fontSize: '10px',
-                                padding: '3px 10px',
-                                borderRadius: '20px',
-                                background: 'var(--bg)',
-                                boxShadow: '3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light)',
-                                color: 'var(--green-alert)',
-                                fontWeight: 600,
-                            }}
-                        >
-                            ✓ Certified
-                        </span>
-                        <span
-                            style={{
-                                fontSize: '10px',
-                                padding: '3px 10px',
-                                borderRadius: '20px',
-                                background: 'var(--bg)',
-                                boxShadow: '3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light)',
-                                color: 'var(--text-secondary)',
-                                fontWeight: 600,
-                            }}
-                        >
-                            🏥 Jharkhand
-                        </span>
-                    </div>
+                <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {userRole === 'admin' ? t('settings.system_admin') : t('settings.health_worker')}
+                </h2>
+                <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    ID: {userName || 'Unknown'} · {userRole === 'admin' ? t('settings.global_access') : t('settings.local_district')}
+                </p>
+                
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '6px 14px', borderRadius: '20px', background: userRole === 'admin' ? 'var(--red-alert)' : 'var(--blue-brand)', color: 'white', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)' }}>
+                        {userRole === 'admin' ? t('settings.super_admin') : t('settings.certified')}
+                    </span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-primary)', padding: '6px 14px', borderRadius: '20px', background: 'var(--bg)', boxShadow: '3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light)' }}>
+                        {userRole === 'admin' ? t('settings.all_regions') : t('settings.local_phc')}
+                    </span>
                 </div>
             </NeumorphicCard>
-
             {/* Storage Card */}
             <NeumorphicCard>
                 <p style={{ margin: '0 0 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    💾 Local Storage
+                    💾 {t('settings.local_storage')}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>DB Usage</span>
+                    <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>{t('settings.db_usage')}</span>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                         <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)' }}>45</span>
                         <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>MB / 1 GB</span>
@@ -88,9 +61,9 @@ const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
                 <NeumorphicProgressBar value={4.5} color="var(--green-alert)" height={14} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
                     {[
-                        { label: 'Audio Files', size: '28MB', icon: '🎙️' },
-                        { label: 'Images', size: '12MB', icon: '📸' },
-                        { label: 'Records', size: '5MB', icon: '📋' },
+                        { label: t('settings.audio_files'), size: '28MB', icon: '🎙️' },
+                        { label: t('settings.images'), size: '12MB', icon: '📸' },
+                        { label: t('settings.records'), size: '5MB', icon: '📋' },
                     ].map((item) => (
                         <div key={item.label} style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '14px' }}>{item.icon}</div>
@@ -124,6 +97,7 @@ const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
                                 fontWeight: language === lang ? 700 : 500,
                                 cursor: 'pointer',
                             }}
+                            aria-label={`Switch to ${lang === 'en' ? 'English' : lang === 'hi' ? 'Hindi' : 'Marathi'}`}
                         >
                             {lang === 'en' ? 'English' : lang === 'hi' ? 'हिंदी' : 'मराठी'}
                         </button>
@@ -142,7 +116,7 @@ const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
                         <span style={{ fontSize: '22px', flexShrink: 0 }}>{isDarkMode ? '🌙' : '☀️'}</span>
                         <div style={{ flex: 1 }}>
                             <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>Dark Mode</p>
-                            <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>Toggle application theme</p>
+                            <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>Toggle theme</p>
                         </div>
                         <NeumorphicToggle
                             defaultOn={isDarkMode}
@@ -161,8 +135,8 @@ const SettingsPage = ({ isDarkMode, toggleDarkMode, onLogout }) => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 0' }}>
                                 <span style={{ fontSize: '22px', flexShrink: 0 }}>{toggle.icon}</span>
                                 <div style={{ flex: 1 }}>
-                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{toggle.label}</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>{toggle.desc}</p>
+                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{t(toggle.labelKey)}</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-secondary)' }}>{t(toggle.descKey)}</p>
                                 </div>
                                 <NeumorphicToggle
                                     defaultOn={toggle.default}

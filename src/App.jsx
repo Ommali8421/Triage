@@ -7,8 +7,8 @@ import PatientsPage from './pages/PatientsPage'
 import TriagePage from './pages/TriagePage'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
-import VoiceAgentTestApp from './VoiceAgentTestApp'
 import VoiceAssistantPage from './pages/VoiceAssistantPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 
 import { LanguageProvider, useLanguage } from './context/LanguageContext'
 
@@ -20,15 +20,15 @@ function AppContent() {
     patients: t('nav.patients'),
     triage: t('nav.triage'),
     voice: t('nav.voice'),
+    analytics: t('nav.analytics'),
     settings: t('nav.settings'),
   }
 
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userRole, setUserRole] = useState('chw')
+  const [userName, setUserName] = useState('')
   const [activePage, setActivePage] = useState('home')
   
-  // Check if we should show voice agent test page
-  const showVoiceAgentTest = window.location.search.includes('test-voice-agent=true');
-
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
   })
@@ -45,19 +45,16 @@ function AppContent() {
 
   const renderPage = () => {
     switch (activePage) {
-      case 'home': return <HomePage onNavigate={setActivePage} />
-      case 'patients': return <PatientsPage />
-      case 'triage': return <TriagePage />
+      case 'home': return <HomePage onNavigate={setActivePage} userRole={userRole} userName={userName} />
+      case 'patients': return <PatientsPage userRole={userRole} userName={userName} />
+      case 'triage': return <TriagePage userName={userName} />
       case 'voice': return <VoiceAssistantPage />
-      case 'settings': return <SettingsPage isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={() => { setIsLoggedIn(false); setActivePage('home'); }} />
-      default: return <HomePage onNavigate={setActivePage} />
+      case 'analytics': return <AnalyticsPage userRole={userRole} />
+      case 'settings': return <SettingsPage isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} onLogout={() => { setIsLoggedIn(false); setUserRole('chw'); setUserName(''); setActivePage('home'); }} userRole={userRole} userName={userName} />
+      default: return <HomePage onNavigate={setActivePage} userRole={userRole} userName={userName} />
     }
   }
 
-  // Render voice agent test page if URL parameter is present
-  if (showVoiceAgentTest) {
-    return <VoiceAgentTestApp />;
-  }
 
   return (
     <div
@@ -73,14 +70,14 @@ function AppContent() {
       }}
     >
       {!isLoggedIn ? (
-        <LoginPage onLogin={() => setIsLoggedIn(true)} />
+        <LoginPage onLogin={(role, name) => { setIsLoggedIn(true); setUserRole(role); setUserName(name); }} />
       ) : (
         <>
           <TopHeader title={PAGE_TITLES[activePage]} />
           <div className="page-content" style={{ marginTop: '72px' }}>
             {renderPage()}
           </div>
-          <BottomNav activePage={activePage} onNavigate={setActivePage} />
+          <BottomNav activePage={activePage} onNavigate={setActivePage} userRole={userRole} />
         </>
       )}
     </div>

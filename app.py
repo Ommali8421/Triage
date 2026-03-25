@@ -2,11 +2,13 @@ import os
 import sys
 import uuid
 import traceback
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from pydantic import BaseModel
 from typing import Optional
+import sqlite3
+import json
 
 # Add both model directories to path
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -48,6 +50,24 @@ class AnalyzeResponse(BaseModel):
     eye: SingleResult
     overall_risk: str
     summary: str
+
+
+# ── DATABASE ──────────────────────────────────────────────────────────────────
+
+DB_FILE = os.path.join(_HERE, 'triage_records.db')
+
+def init_db():
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS records (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT,
+                data TEXT
+            )
+        ''')
+        conn.commit()
+
+init_db()
 
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -142,6 +162,44 @@ async def analyze(
         for p in [audio_path, image_path]:
             if os.path.exists(p):
                 os.remove(p)
+
+
+@app.post("/records")
+async def save_record(record: dict = Body(...)):
+    """Save a full triage record into the SQLite database."""
+    record_id = str(record.get('id', uuid.uuid4()))
+    timestamp = record.get('timestamp', '')
+    
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO records (id, timestamp, data) VALUES (?, ?, ?)",
+            (record_id, timestamp, json.dumps(record))
+        )
+        conn.commit()
+    return {"status": "success", "id": record_id}
+
+@app.get("/records")
+async def get_records():
+    """Retrieve all triage records from the database, sorted newest first."""
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.execute("SELECT data FROM records ORDER BY timestamp DESC")
+        rows = cursor.fetchall()
+        
+    records = []
+    for row in rows:
+        try:
+            records.append(json.loads(row[0]))
+        except:
+            pass
+    return records
+
+@app.delete("/records/{record_id}")
+async def delete_record(record_id: str):
+    """Delete a triage record from the database."""
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("DELETE FROM records WHERE id = ?", (record_id,))
+        conn.commit()
+    return {"status": "success"}
 
 
 if __name__ == "__main__":

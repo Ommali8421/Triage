@@ -53,7 +53,8 @@ cough_model/**/*.png
 cough_model/**/*.h5
 cough_model/model_performance.png
 cough_model/test_results.txt
-ML models/tmp_uploads/
+ML models/
+tmp_uploads/
 
 # Build outputs
 build/

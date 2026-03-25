@@ -1,19 +1,29 @@
 import { useLanguage } from '../../context/LanguageContext'
+import { Home, Users, Mic, Settings, BarChart2, Activity } from 'lucide-react'
+
+const navIcons = {
+    home: Home,
+    patients: Users,
+    triage: Activity,
+    voice: Mic,
+    analytics: BarChart2,
+    settings: Settings,
+}
 
 const BottomNav = ({ activePage, onNavigate, userRole }) => {
     const { t } = useLanguage()
 
     const navItems = userRole === 'admin' ? [
-        { id: 'home', icon: '🏠', label: 'Home' },
-        { id: 'patients', icon: '👥', label: 'Patients' },
-        { id: 'analytics', icon: '📊', label: 'Analytics' },
-        { id: 'settings', icon: '⚙️', label: 'Settings' },
+        { id: 'home', label: 'Home' },
+        { id: 'patients', label: 'Patients' },
+        { id: 'analytics', label: 'Analytics' },
+        { id: 'settings', label: 'Settings' },
     ] : [
-        { id: 'home', icon: '🏠', label: 'Home' },
-        { id: 'patients', icon: '👥', label: 'Patients' },
-        { id: 'triage', icon: '🟢', label: 'Triage', isCenter: true },
-        { id: 'voice', icon: '🗣️', label: 'Voice' },
-        { id: 'settings', icon: '⚙️', label: 'Settings' },
+        { id: 'home', label: 'Home' },
+        { id: 'patients', label: 'Patients' },
+        { id: 'triage', label: 'Triage', isCenter: true },
+        { id: 'voice', label: 'Voice' },
+        { id: 'settings', label: 'Settings' },
     ];
 
     return (
@@ -36,7 +46,10 @@ const BottomNav = ({ activePage, onNavigate, userRole }) => {
             }}
         >
             {navItems.map((item) => {
+                const IconComp = navIcons[item.id]
+
                 if (item.isCenter) {
+                    const isActive = activePage === item.id
                     return (
                         <button
                             key={item.id}
@@ -47,10 +60,9 @@ const BottomNav = ({ activePage, onNavigate, userRole }) => {
                                 borderRadius: '50%',
                                 background: 'var(--bg)',
                                 border: 'none',
-                                boxShadow:
-                                    activePage === item.id
-                                        ? 'inset 6px 6px 10px var(--shadow-dark), inset -6px -6px 10px var(--shadow-light)'
-                                        : '9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light)',
+                                boxShadow: isActive
+                                    ? 'inset 6px 6px 10px var(--shadow-dark), inset -6px -6px 10px var(--shadow-light)'
+                                    : '9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light)',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center',
@@ -60,10 +72,11 @@ const BottomNav = ({ activePage, onNavigate, userRole }) => {
                                 transition: 'box-shadow 0.2s ease',
                                 outline: 'none',
                                 flexShrink: 0,
+                                animation: !isActive ? 'triagePulse 2s infinite' : 'none',
                             }}
                             aria-label={item.label}
                         >
-                            <span style={{ fontSize: '22px', lineHeight: 1 }}>{item.icon}</span>
+                            <IconComp size={22} color="var(--green-alert)" strokeWidth={2.5} />
                             <span style={{ fontSize: '9px', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '2px' }}>
                                 {t(`nav.${item.id}`)}
                             </span>
@@ -104,11 +117,16 @@ const BottomNav = ({ activePage, onNavigate, userRole }) => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '18px',
                                 transition: 'box-shadow 0.2s ease',
                             }}
                         >
-                            {item.icon}
+                            {IconComp && (
+                                <IconComp
+                                    size={18}
+                                    color={isActive ? 'var(--green-alert)' : 'var(--text-secondary)'}
+                                    strokeWidth={isActive ? 2.5 : 1.8}
+                                />
+                            )}
                         </div>
                         <span
                             style={{

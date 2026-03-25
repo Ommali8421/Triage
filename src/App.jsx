@@ -74,7 +74,7 @@ function AppContent() {
       ) : (
         <>
           <TopHeader title={PAGE_TITLES[activePage]} />
-          <div className="page-content" style={{ marginTop: '72px' }}>
+          <div key={activePage} className="page-content page-enter" style={{ marginTop: '72px' }}>
             {renderPage()}
           </div>
           <BottomNav activePage={activePage} onNavigate={setActivePage} userRole={userRole} />

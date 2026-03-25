@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Room, RoomEvent, Track } from 'livekit-client';
 import { voiceAgentService } from './voiceAgentService';
 
@@ -14,17 +14,39 @@ const useVoiceAgent = () => {
   const roomRef = useRef(null);
   const recognitionRef = useRef(null);
 
+  const isListeningRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const transcriptionRef = useRef('');
 
-  // Browser Speech Recognition (fallback)
+  useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
+  useEffect(() => { isSpeakingRef.current = isSpeaking; }, [isSpeaking]);
+  useEffect(() => { transcriptionRef.current = transcription; }, [transcription]);
+
+  const stopMic = useCallback(() => {
+    isListeningRef.current = false;
+    setIsListening(false);
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (_) {}
+      try { recognitionRef.current.abort(); } catch (_) {}
+    }
+  }, []);
+
+  // Browser Speech Recognition (fallback/local STT if taking text to backend)
   const initializeSpeechRecognition = useCallback(() => {
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch (_) {}
+      }
+
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
       recognition.onresult = (event) => {
+        if (isSpeakingRef.current) return;
         const transcript = Array.from(event.results)
           .map(result => result[0])
           .map(result => result.transcript)
@@ -33,8 +55,8 @@ const useVoiceAgent = () => {
       };
 
       recognition.onend = () => {
-        if (isListening) {
-          recognition.start();
+        if (isListeningRef.current && !isSpeakingRef.current) {
+          try { recognition.start(); } catch (_) {}
         }
       };
 
@@ -42,49 +64,50 @@ const useVoiceAgent = () => {
       return true;
     }
     return false;
-  }, [isListening]);
+  }, []);
 
   // Browser Speech Synthesis
   const speakText = useCallback(async (text) => {
     if ('speechSynthesis' in window) {
-      setIsSpeaking(true);
-      
       return new Promise((resolve) => {
+        window.speechSynthesis.cancel();
+        
+        stopMic(); // Hard stop mic before talking
+        setIsSpeaking(true);
+        isSpeakingRef.current = true;
+
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 0.9;
         utterance.pitch = 1.0;
         
-        utterance.onend = () => {
+        const done = () => {
           setIsSpeaking(false);
+          isSpeakingRef.current = false;
           resolve();
         };
-        
-        utterance.onerror = () => {
-          setIsSpeaking(false);
-          resolve();
-        };
+
+        utterance.onend = done;
+        utterance.onerror = done;
         
         window.speechSynthesis.speak(utterance);
       });
     }
-    setIsSpeaking(false);
     return Promise.resolve();
-  }, []);
+  }, [stopMic]);
 
-  // LiveKit Connection (with mock support for development)
+  // LiveKit Connection
   const connectToLiveKit = useCallback(async () => {
     try {
       const token = await voiceAgentService.getLiveKitToken();
       
-      // Check if we're using mock tokens (development mode) - FORCE MOCK FOR TESTING
+      // Check if we're using mock tokens (development mode)
       if (token === 'mock-livekit-token-for-development' || import.meta.env.VITE_USE_MOCK === 'true') {
-        // Mock connection for development - skip actual WebRTC connection
         console.log('Using mock LiveKit connection for development');
         setIsConnected(true);
         return true;
       }
       
-      // Real LiveKit connection for production
+      // Real LiveKit connection
       const room = new Room();
       roomRef.current = room;
 
@@ -108,6 +131,7 @@ const useVoiceAgent = () => {
   // Process user speech and get AI response
   const processUserSpeech = useCallback(async (userText) => {
     try {
+      if (!userText.trim()) return;
       const response = await voiceAgentService.sendToTriageAI(userText);
       setAiResponse(response.aiResponse);
       setTriageLevel(response.triageLevel);
@@ -119,7 +143,7 @@ const useVoiceAgent = () => {
       return response;
     } catch (error) {
       console.error('Error processing speech:', error);
-      const fallbackResponse = "I apologize, I'm having trouble processing your request. Please try again or contact healthcare support directly.";
+      const fallbackResponse = "I apologize, I'm having trouble connecting to the AI server. Please try again.";
       setAiResponse(fallbackResponse);
       await speakText(fallbackResponse);
     }
@@ -131,6 +155,11 @@ const useVoiceAgent = () => {
     if (connected) {
       initializeSpeechRecognition();
       
+      setTranscription('');
+      setAiResponse('');
+      setTriageLevel('');
+      setDoctorRecommendation('');
+
       // Start with welcome message
       const welcomeMessage = "Hello! I'm your healthcare assistant. Please describe your symptoms and I'll help assess your situation.";
       setAiResponse(welcomeMessage);
@@ -140,13 +169,13 @@ const useVoiceAgent = () => {
 
   // End voice call
   const endCall = useCallback(async () => {
+    stopMic();
     if (roomRef.current) {
       await roomRef.current.disconnect();
       roomRef.current = null;
     }
     
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
       recognitionRef.current = null;
     }
     
@@ -154,39 +183,38 @@ const useVoiceAgent = () => {
       window.speechSynthesis.cancel();
     }
     
+    isSpeakingRef.current = false;
     setIsConnected(false);
-    setIsListening(false);
     setIsSpeaking(false);
     setTranscription('');
     setAiResponse('');
     setTriageLevel('');
     setDoctorRecommendation('');
-  }, []);
+  }, [stopMic]);
 
-  // Toggle microphone
+  // Toggle microphone (push-to-talk to prevent looping)
   const toggleMicrophone = useCallback(async () => {
-    if (!isConnected) return;
+    if (!isConnected || !recognitionRef.current || isSpeakingRef.current) return;
     
-    if (isListening) {
+    if (isListeningRef.current) {
       // Stop listening and process speech
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsListening(false);
+      const spoken = transcriptionRef.current.trim();
+      setTranscription('');
+      transcriptionRef.current = '';
+      stopMic();
       
-      // Process the captured speech
-      if (transcription) {
-        await processUserSpeech(transcription);
+      if (spoken) {
+        await processUserSpeech(spoken);
       }
     } else {
       // Start listening
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-      }
-      setIsListening(true);
       setTranscription('');
+      transcriptionRef.current = '';
+      isListeningRef.current = true;
+      setIsListening(true);
+      try { recognitionRef.current.start(); } catch (_) {}
     }
-  }, [isConnected, isListening, transcription, processUserSpeech]);
+  }, [isConnected, processUserSpeech, stopMic]);
 
   return {
     isConnected,

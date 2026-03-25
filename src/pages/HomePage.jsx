@@ -20,6 +20,7 @@ const HomePage = ({ onNavigate, userRole, userName }) => {
     const [showReportOptions, setShowReportOptions] = useState(false)
     const [reportData, setReportData] = useState(null)
     const [recentPatients, setRecentPatients] = useState([])
+    const [loadingPatients, setLoadingPatients] = useState(true)
     const [overviewStats, setOverviewStats] = useState({ total: 0, red: 0, yellow: 0, green: 0 })
 
     useEffect(() => {
@@ -67,6 +68,8 @@ const HomePage = ({ onNavigate, userRole, userName }) => {
                 }
             } catch (error) {
                 console.error("Failed to load recent patients", error)
+            } finally {
+                setLoadingPatients(false)
             }
         }
         fetchPatients()
@@ -148,6 +151,8 @@ const HomePage = ({ onNavigate, userRole, userName }) => {
                                 padding: '10px 6px',
                             }}
                         >
+                            {/* Glowing dot indicator */}
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: stat.color, boxShadow: `0 0 6px ${stat.color}`, margin: '0 auto 6px' }} />
                             <div style={{ fontSize: '22px', fontWeight: 700, color: stat.color }}>{stat.value}</div>
                             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', fontWeight: 500 }}>{stat.label}</div>
                         </div>
@@ -189,10 +194,22 @@ const HomePage = ({ onNavigate, userRole, userName }) => {
                     </button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {recentPatients.length === 0 && (
+                    {loadingPatients ? (
+                        // Skeleton loaders
+                        [1,2,3].map(i => (
+                            <div key={i} style={{ padding: '14px 18px', borderRadius: '20px', background: 'var(--bg)', boxShadow: '5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                    <div className="skeleton" style={{ width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0 }} />
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div className="skeleton" style={{ height: '12px', width: '55%' }} />
+                                        <div className="skeleton" style={{ height: '10px', width: '80%' }} />
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : recentPatients.length === 0 ? (
                         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', margin: '20px 0' }}>{t('home.no_recent')}</p>
-                    )}
-                    {recentPatients.map((patient) => (
+                    ) : recentPatients.map((patient) => (
                         <NeumorphicCard key={patient.id} style={{ padding: '14px 18px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                                 {/* Avatar */}

@@ -1,3 +1,5 @@
+import { HeartPulse } from 'lucide-react'
+
 const TopHeader = ({ title }) => {
     return (
         <div
@@ -16,17 +18,20 @@ const TopHeader = ({ title }) => {
                 justifyContent: 'space-between',
                 padding: '0 20px',
                 boxShadow: '0 4px 12px rgba(163,177,198,0.4)',
+                borderBottom: '2px solid transparent',
+                backgroundImage: 'linear-gradient(var(--bg), var(--bg)), linear-gradient(90deg, #20c997 0%, #4facde 100%)',
+                backgroundOrigin: 'border-box',
+                backgroundClip: 'padding-box, border-box',
             }}
         >
-            {/* Left: Greeting + Title */}
+            {/* Left: Title */}
             <div>
-
                 <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                     {title}
                 </h1>
             </div>
 
-            {/* Right: Avatar */}
+            {/* Right: Branded icon */}
             <div
                 style={{
                     width: '44px',
@@ -37,12 +42,10 @@ const TopHeader = ({ title }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '18px',
-                    cursor: 'pointer',
                     flexShrink: 0,
                 }}
             >
-                🩺
+                <HeartPulse size={22} color="#20c997" strokeWidth={2} />
             </div>
         </div>
     )

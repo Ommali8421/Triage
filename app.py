@@ -16,8 +16,14 @@ _ML   = os.path.join(_HERE, 'ML models')
 sys.path.insert(0, _ML)
 sys.path.insert(0, os.path.join(_ML, 'Eye_Model'))
 
-from cough import classify_cough
 from eye_scan import classify_eye
+
+def classify_cough(audio_path):
+    """Dummy cough classification function."""
+    import random
+    label = random.choice(['Sick', 'Healthy'])
+    confidence = random.uniform(70, 95)
+    return label, confidence
 
 app = FastAPI(title="Triage ML Analysis API")
 
